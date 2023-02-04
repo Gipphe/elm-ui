@@ -14,7 +14,7 @@ module Element exposing
     , scrollbars, scrollbarX, scrollbarY
     , layout, layoutWith, Option, noStaticStyleSheet, forceHover, noHover, focusStyle, FocusStyle
     , link, newTabLink, download, downloadAs
-    , image
+    , image, imageSet
     , Color, rgba, rgb, rgb255, rgba255, fromRgb, fromRgb255, toRgb
     , above, below, onRight, onLeft, inFront, behindContent
     , Attr, Decoration, mouseOver, mouseDown, focused
@@ -147,7 +147,7 @@ Add a scrollbar if the content is larger than the element.
 
 # Images
 
-@docs image
+@docs image, imageSet
 
 
 # Color
@@ -1134,6 +1134,71 @@ image attrs { src, description } =
                     ++ imageAttributes
                 )
                 (Internal.Unkeyed [])
+            ]
+        )
+
+
+{-| A set of images. Can be used to provide more than one source for an image,
+so as to support more than one image type and/or resolution.
+-}
+imageSet :
+    List (Attribute msg)
+    ->
+        { sources :
+            List
+                { srcset : String, type_ : String }
+        , fallback : String
+        , description : String
+        }
+    -> Element msg
+imageSet attrs { sources, fallback, description } =
+    let
+        imageAttributes =
+            attrs
+                |> List.filter
+                    (\a ->
+                        case a of
+                            Internal.Width _ ->
+                                True
+
+                            Internal.Height _ ->
+                                True
+
+                            _ ->
+                                False
+                    )
+
+        mkSource { srcset, type_ } =
+            Internal.element
+                Internal.asEl
+                (Internal.NodeName "source")
+                [ Internal.Attr <| Html.Attributes.attribute "srcset" srcset
+                , Internal.Attr <| Html.Attributes.type_ type_
+                ]
+                (Internal.Unkeyed [])
+    in
+    Internal.element
+        Internal.asEl
+        Internal.div
+        (Internal.htmlClass classes.imageContainer :: attrs)
+        (Internal.Unkeyed
+            [ Internal.element
+                Internal.asEl
+                (Internal.NodeName "picture")
+                (Internal.Attr (Html.Attributes.alt description)
+                    :: imageAttributes
+                )
+                (Internal.Unkeyed
+                    (List.map mkSource sources
+                        ++ [ Internal.element Internal.asEl
+                                (Internal.NodeName "img")
+                                [ Internal.Attr <| Html.Attributes.src fallback
+                                , Internal.Attr <| Html.Attributes.alt description
+                                ]
+                                (Internal.Unkeyed [])
+                           ]
+                    )
+                )
             ]
         )
 
