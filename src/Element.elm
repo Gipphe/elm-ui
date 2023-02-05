@@ -14,7 +14,7 @@ module Element exposing
     , scrollbars, scrollbarX, scrollbarY
     , layout, layoutWith, Option, noStaticStyleSheet, forceHover, noHover, focusStyle, FocusStyle
     , link, newTabLink, download, downloadAs
-    , image, imageSet
+    , image, imageSet, Source(..)
     , Color, rgba, rgb, rgb255, rgba255, fromRgb, fromRgb255, toRgb
     , above, below, onRight, onLeft, inFront, behindContent
     , Attr, Decoration, mouseOver, mouseDown, focused
@@ -147,7 +147,7 @@ Add a scrollbar if the content is larger than the element.
 
 # Images
 
-@docs image, imageSet
+@docs image, imageSet, Source
 
 
 # Color
@@ -1138,15 +1138,55 @@ image attrs { src, description } =
         )
 
 
+{-| A given `imageSet` source can be of different types. These types will be
+encoded in the final <source> element as an attribute to further guide web
+browsers about the contained image format.
+-}
+type Source
+    = WebP String
+    | PNG String
+    | JPG String
+    | AVIF String
+    | TIFF String
+    | HEIC String
+
+
+sourceToAttributes : Source -> List (Internal.Attribute aligned msg)
+sourceToAttributes source =
+    case source of
+        WebP src ->
+            sourceAttrs "image/webp" src
+
+        PNG src ->
+            sourceAttrs "image/png" src
+
+        JPG src ->
+            sourceAttrs "image/jpeg" src
+
+        AVIF src ->
+            sourceAttrs "image/avif" src
+
+        TIFF src ->
+            sourceAttrs "image/tiff" src
+
+        HEIC src ->
+            sourceAttrs "image/heic" src
+
+
+sourceAttrs : String -> String -> List (Internal.Attribute aligned msg)
+sourceAttrs type_ src =
+    [ Internal.Attr <| Html.Attributes.attribute "srcset" src
+    , Internal.Attr <| Html.Attributes.type_ type_
+    ]
+
+
 {-| A set of images. Can be used to provide more than one source for an image,
 so as to support more than one image type and/or resolution.
 -}
 imageSet :
     List (Attribute msg)
     ->
-        { sources :
-            List
-                { srcset : String, type_ : String }
+        { sources : List Source
         , fallback : String
         , description : String
         }
@@ -1168,13 +1208,11 @@ imageSet attrs { sources, fallback, description } =
                                 False
                     )
 
-        mkSource { srcset, type_ } =
+        mkSource src =
             Internal.element
                 Internal.asEl
                 (Internal.NodeName "source")
-                [ Internal.Attr <| Html.Attributes.attribute "srcset" srcset
-                , Internal.Attr <| Html.Attributes.type_ type_
-                ]
+                (sourceToAttributes src)
                 (Internal.Unkeyed [])
     in
     Internal.element
